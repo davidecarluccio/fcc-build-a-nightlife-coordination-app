@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <title>Nightlife</title>
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Custom CSS -->
+    <style>
+    body {
+        padding-top: 70px;
+    }
+	
+	.greetings {
+		color: white;
+		position: relative;
+		display: block;
+		padding-top: 15px;
+		padding-bottom: 15px;
+	}
+	
+	.pointer {
+		cursor: pointer;
+	}
+    </style>
+</head>
+<body>
+    <!-- NavBar -->
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+           <div class="collapse navbar-collapse" >
+				        <!-- Greetings -->
+                <ul class="nav navbar-nav" style="float:left">
+                    <li>
+                      <a href="/">Home</a>
+                    </li>
+                    <li>
+                        {{#authenticated}}<div class="greetings">Hello, {{user.username}}!</div>{{/authenticated}}
+                    </li>
+                </ul>
+        				<!-- Logout / GitHub Button -->
+        				<ul class="nav navbar-nav pointer" style="float:right">
+                    <li>
+                        {{^authenticated}}<a href="/login">Login</a>{{/authenticated}}
+                        {{#authenticated}}<a href="/logout">Logout</a>{{/authenticated}}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <!-- Page Content -->
+    <div class="container">
+		<div class="row">
+			<div class="col-lg-12 text-center">
+				<h1>Nightlife</h1>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-lg-12 text-center">
+				<p class="lead">Check it out what's happening tonight in your town!</p>
+			</div>
+		</div>
+		{{#message}}
+		<div class="row">
+			<div class="col-lg-12 text-center">
+				<span style="color:red">{{message}}</span>
+			</div>
+		</div>
+		{{/message}}
+		<div class="row">
+			<form action="/search" method="post">
+			<div class="col-lg-11 text-center">
+				<input id="town" type="text" name="town" class="form-control input-sm" placeholder="Your Town"/>
+			</div>
+			<div class="col-lg-1 text-center">
+				<button class="btn btn-sm btn-primary">Search</button>
+			</div>
+			</form>
+		</div>
+        <div class="row">
+            <div class="col-lg-12 text-left">
+                <table class="table table-sm">
+					<thead>
+						<tr>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						{{#businesses}}
+						<tr>
+						  <td>
+						  <div class="row">
+							<div class="col-lg-2"><img src="{{#image_url}}{{image_url}}{{/image_url}}{{^image_url}}https://via.placeholder.com/80x80.png?text=No+Image{{/image_url}}" class="img-rounded" style="width:80px"/></div>
+							<div class="col-lg-9"><a style="text-decoration:none" href="{{url}}"><span><b>{{name}}</b> {{snippet_text}}</span></a></div>
+							<div class="col-lg-1">{{#authenticated}}<button class="btn btn-xs {{#userIsAVisitor}}btn-secondary{{/userIsAVisitor}} {{^userIsAVisitor}}btn-primary{{/userIsAVisitor}} btnGoing" data-id="{{id}}" data-visitors-qty="{{visitorsQty}}" data-user-is-a-visitor="{{userIsAVisitor}}">{{visitorsQty}} going</button>{{/authenticated}}</div>
+						  </div>
+						  </td>
+						</tr>
+						{{/businesses}}
+					</tbody>
+				</table>	
+            </div>
+        </div>
+    </div>
+	<!-- script references -->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.2/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+	<script>
+		function initGoogleAPI() {
+			var input = /** @type {!HTMLInputElement} */(
+			document.getElementById("town"));
+			var autocomplete = new google.maps.places.Autocomplete(input);
+			var infowindow = new google.maps.InfoWindow();
+			autocomplete.addListener("place_changed", function() {
+				infowindow.close();
+				var place = autocomplete.getPlace();
+				if (!place.geometry) {
+					//window.alert("Autocomplete's returned place contains no geometry");
+					return;
+				}
+				infowindow.setContent('<div><strong>' + place.name + '</strong><br>' + address);
+				infowindow.open(null, null);
+			});
+		}
+		
+		function switchButtonStyle(element, newStyle, oldStyle) {
+			$(element).addClass(newStyle);
+			$(element).removeClass(oldStyle);
+		}
+		
+		function callVisitorAPI(add, pubId) {
+			var username = "{{{user.username}}}";
+			var baseUrl = document.location.protocol + "/" + document.location.hostname + "/visitor/";
+			document.domain = document.location.hostname;
+			var sufix = "visitor/";
+			if (add) {
+				sufix += "add";
+			} else {
+				sufix += "remove";
+			}
+			$.post(sufix, { "username": username, "pubId": pubId}, 
+				function(returnedData) {
+				console.log(returnedData);
+			}).fail(function() {
+				console.log("error");
+			});
+		}
+		
+		$(".btnGoing").click(function() {
+			var userIsAVisitor = $(this).attr("data-user-is-a-visitor");
+			var visitors = parseInt($(this).attr("data-visitors-qty"));
+			var pubId = $(this).attr("data-id");
+			if (userIsAVisitor) {
+				visitors--;
+				$(this).attr("data-user-is-a-visitor", null);
+				switchButtonStyle(this, "btn-primary", "btn-secondary");
+				callVisitorAPI(false, pubId);
+			} else {
+				visitors++;
+				$(this).attr("data-user-is-a-visitor", true);
+				switchButtonStyle(this, "btn-secondary", "btn-primary");
+				callVisitorAPI(true, pubId);
+			}
+			$(this).attr("data-visitors-qty", visitors);
+			$(this).html(visitors + " going");
+		});
+	</script>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBW8dmTjdmfb2isQA9yO2x-NWmWI8zHpsA&cx=008167733778276982844:_ybjsd3ch4m&signed_in=true&libraries=places&callback=initGoogleAPI" async defer></script>
+</body>
+</html>
